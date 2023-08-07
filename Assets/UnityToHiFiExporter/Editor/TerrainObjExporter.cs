@@ -9,7 +9,7 @@ using System.IO;
 using System.Text;
 
 enum SaveFormat { Triangles, Quads }
-enum SaveResolution { Full=0, Half, Quarter, Eighth, Sixteenth }
+enum SaveResolution { Full = 0, Half, Quarter, Eighth, Sixteenth }
 
 class ExportTerrain : EditorWindow
 {
@@ -53,9 +53,9 @@ class ExportTerrain : EditorWindow
 			}
 			return;
 		}
-		saveFormat = (SaveFormat) EditorGUILayout.EnumPopup("Export Format", saveFormat);
+		saveFormat = (SaveFormat)EditorGUILayout.EnumPopup("Export Format", saveFormat);
 
-		saveResolution = (SaveResolution) EditorGUILayout.EnumPopup("Resolution", saveResolution);
+		saveResolution = (SaveResolution)EditorGUILayout.EnumPopup("Resolution", saveResolution);
 
 		if (GUILayout.Button("Export"))
 		{
@@ -66,10 +66,10 @@ class ExportTerrain : EditorWindow
 	void Export()
 	{
 		string fileName = EditorUtility.SaveFilePanel("Export .obj file", "", "Terrain", "obj");
-		int w = terrain.heightmapWidth;
-		int h = terrain.heightmapHeight;
+		int w = terrain.heightmapResolution;
+		int h = terrain.heightmapResolution;
 		Vector3 meshScale = terrain.size;
-		int tRes = (int)Mathf.Pow(2, (int)saveResolution );
+		int tRes = (int)Mathf.Pow(2, (int)saveResolution);
 		meshScale = new Vector3(meshScale.x / (w - 1) * tRes, meshScale.y, meshScale.z / (h - 1) * tRes);
 		Vector2 uvScale = new Vector2(1.0f / (w - 1), 1.0f / (h - 1));
 		float[,] tData = terrain.GetHeights(0, 0, w, h);
@@ -96,11 +96,11 @@ class ExportTerrain : EditorWindow
 			for (int x = 0; x < w; x++)
 			{
 				tVertices[y * w + x] = Vector3.Scale(meshScale, new Vector3(-y, tData[x * tRes, y * tRes], x)) + terrainPos;
-				tUV[y * w + x] = Vector2.Scale( new Vector2(x * tRes, y * tRes), uvScale);
+				tUV[y * w + x] = Vector2.Scale(new Vector2(x * tRes, y * tRes), uvScale);
 			}
 		}
 
-		int  index = 0;
+		int index = 0;
 		if (saveFormat == SaveFormat.Triangles)
 		{
 			// Build triangle indices: 3 indices into vertex array for each triangle
@@ -193,7 +193,7 @@ class ExportTerrain : EditorWindow
 				}
 			}
 		}
-		catch(Exception err)
+		catch (Exception err)
 		{
 			Debug.Log("Error saving file: " + err.Message);
 		}
@@ -201,7 +201,7 @@ class ExportTerrain : EditorWindow
 
 		terrain = null;
 		EditorUtility.DisplayProgressBar("Saving file to disc.", "This might take a while...", 1f);
-		EditorWindow.GetWindow<ExportTerrain>().Close();      
+		EditorWindow.GetWindow<ExportTerrain>().Close();
 		EditorUtility.ClearProgressBar();
 	}
 

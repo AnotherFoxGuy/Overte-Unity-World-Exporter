@@ -55,21 +55,21 @@ namespace HiFiExporter
 		public static bool ExportGameObjToFBX(GameObject gameObj, string newPath, bool copyMaterials = false, bool copyTextures = false)
 		{
 			// Check to see if the extension is right
-			if(newPath.LastIndexOf('.') < 0 || newPath.Remove(0, newPath.LastIndexOf('.')) != ".fbx")
+			if (newPath.LastIndexOf('.') < 0 || newPath.Remove(0, newPath.LastIndexOf('.')) != ".fbx")
 			{
 				Debug.LogError("The end of the path wasn't \".fbx\"");
 				return false;
 			}
-            
+
 			// NOTE: Materials are never copied as they are for Unity's system
-//			if(copyMaterials && false)
-//				CopyComplexMaterialsToPath(gameObj, newPath, copyTextures);
+			//			if(copyMaterials && false)
+			//				CopyComplexMaterialsToPath(gameObj, newPath, copyTextures);
 
 			// The mesh is built as well as copying textures to the new path
 			string buildMesh = MeshToString(gameObj, newPath, false, true, copyMaterials, copyTextures);
-            
-            if (System.IO.File.Exists(newPath))
-           		System.IO.File.Delete(newPath);
+
+			if (File.Exists(newPath))
+				System.IO.File.Delete(newPath);
 
 			System.IO.File.WriteAllText(newPath, buildMesh);
 
@@ -77,35 +77,35 @@ namespace HiFiExporter
 			// NOTE: The code below automatically updates asset database in Unity's asset folder. Since we assume the player will
 			// be exporting elsewhere, this has been commented out. It is also prone to break when Unity updates to newer versions
 
-//#if UNITY_EDITOR
-//			// Import the model properly so it looks for the material instead of by the texture name
-//			// TODO: By calling refresh, it imports the model with the wrong materials, but we can't find the model to import without
-//			// refreshing the database. A chicken and the egg issue
-//			AssetDatabase.Refresh();
-//			string stringLocalPath = newPath.Remove(0, newPath.LastIndexOf("/Assets") + 1);
-//			ModelImporter modelImporter = ModelImporter.GetAtPath(stringLocalPath) as ModelImporter;
-//			if(modelImporter != null)
-//			{
-//				ModelImporterMaterialName modelImportOld = modelImporter.materialName;
-//				modelImporter.materialName = ModelImporterMaterialName.BasedOnMaterialName;
-//#if UNITY_5_1
-//                modelImporter.normalImportMode = ModelImporterTangentSpaceMode.Import;
-//#else
-//                modelImporter.importNormals = ModelImporterNormals.Import;
-//#endif
-//                if (copyMaterials == false)
-//					modelImporter.materialSearch = ModelImporterMaterialSearch.Everywhere;
-//				
-//				AssetDatabase.ImportAsset(stringLocalPath, ImportAssetOptions.ForceUpdate);
-//			}
-//			else
-//			{
-//				Debug.Log("Model Importer is null and can't import");
-//			}
-//
-//			AssetDatabase.Refresh(); 
-//#endif
-            return true;
+			//#if UNITY_EDITOR
+			//			// Import the model properly so it looks for the material instead of by the texture name
+			//			// TODO: By calling refresh, it imports the model with the wrong materials, but we can't find the model to import without
+			//			// refreshing the database. A chicken and the egg issue
+			//			AssetDatabase.Refresh();
+			//			string stringLocalPath = newPath.Remove(0, newPath.LastIndexOf("/Assets") + 1);
+			//			ModelImporter modelImporter = ModelImporter.GetAtPath(stringLocalPath) as ModelImporter;
+			//			if(modelImporter != null)
+			//			{
+			//				ModelImporterMaterialName modelImportOld = modelImporter.materialName;
+			//				modelImporter.materialName = ModelImporterMaterialName.BasedOnMaterialName;
+			//#if UNITY_5_1
+			//                modelImporter.normalImportMode = ModelImporterTangentSpaceMode.Import;
+			//#else
+			//                modelImporter.importNormals = ModelImporterNormals.Import;
+			//#endif
+			//                if (copyMaterials == false)
+			//					modelImporter.materialSearch = ModelImporterMaterialSearch.Everywhere;
+			//				
+			//				AssetDatabase.ImportAsset(stringLocalPath, ImportAssetOptions.ForceUpdate);
+			//			}
+			//			else
+			//			{
+			//				Debug.Log("Model Importer is null and can't import");
+			//			}
+			//
+			//			AssetDatabase.Refresh(); 
+			//#endif
+			return true;
 		}
 
 		public static string VersionInformation
@@ -121,17 +121,17 @@ namespace HiFiExporter
 		/// <summary>
 		/// Creates the FBX file from the GameObject given, and returns the string
 		/// </summary>
-		public static string MeshToString (GameObject gameObj, string newPath, 
+		public static string MeshToString(GameObject gameObj, string newPath,
 			bool exportRotationAndScale = true, bool doNotExportChildren = false, bool copyMaterials = false, bool copyTextures = false)
 		{
 			StringBuilder sb = new StringBuilder();
-			
+
 			StringBuilder objectProps = new StringBuilder();
 			objectProps.AppendLine("; Object properties");
 			objectProps.AppendLine(";------------------------------------------------------------------");
 			objectProps.AppendLine("");
 			objectProps.AppendLine("Objects:  {");
-			
+
 			StringBuilder objectConnections = new StringBuilder();
 			objectConnections.AppendLine("; Object connections");
 			objectConnections.AppendLine(";------------------------------------------------------------------");
@@ -159,16 +159,16 @@ namespace HiFiExporter
 			objectProps.AppendLine("}");
 			objectConnections.AppendLine("}");
 
-			
+
 			// ========= Create header ========
-			
+
 			// Intro
 			sb.AppendLine("; FBX 7.3.0 project file");
 			sb.AppendLine("; Copyright (C) 1997-2010 Autodesk Inc. and/or its licensors.");
 			sb.AppendLine("; All rights reserved.");
 			sb.AppendLine("; ----------------------------------------------------");
 			sb.AppendLine();
-			
+
 			// The header
 			sb.AppendLine("FBXHeaderExtension:  {");
 			sb.AppendLine("\tFBXHeaderVersion: 1003");
@@ -186,7 +186,7 @@ namespace HiFiExporter
 			sb.AppendLine("\t\tSecond: " + currentDate.Second);
 			sb.AppendLine("\t\tMillisecond: " + currentDate.Millisecond);
 			sb.AppendLine("\t}");
-			
+
 			// Info on the Creator
 			sb.AppendLine("\tCreator: \"" + VersionInformation + "\"");
 			sb.AppendLine("\tSceneInfo: \"SceneInfo::GlobalInfo\", \"UserData\" {");
@@ -221,7 +221,7 @@ namespace HiFiExporter
 			sb.AppendLine("\t\t}");
 			sb.AppendLine("\t}");
 			sb.AppendLine("}");
-			
+
 			// The Global information
 			sb.AppendLine("GlobalSettings:  {");
 			sb.AppendLine("\tVersion: 1000");
@@ -244,7 +244,7 @@ namespace HiFiExporter
 			sb.AppendLine("\t\tP: \"CustomFrameRate\", \"double\", \"Number\", \"\",-1");
 			sb.AppendLine("\t}");
 			sb.AppendLine("}");
-			
+
 			// The Object definations
 			sb.AppendLine("; Object definitions");
 			sb.AppendLine(";------------------------------------------------------------------");
@@ -336,7 +336,7 @@ namespace HiFiExporter
 			sb.AppendLine("\t\t\t}");
 			sb.AppendLine("\t\t}");
 			sb.AppendLine("\t}");
-			
+
 			// The geometry, this is IMPORTANT
 			sb.AppendLine("\tObjectType: \"Geometry\" {");
 			sb.AppendLine("\t\tCount: 1"); // TODO - this must be set by the number of items being placed.
@@ -351,7 +351,7 @@ namespace HiFiExporter
 			sb.AppendLine("\t\t\t}");
 			sb.AppendLine("\t\t}");
 			sb.AppendLine("\t}");
-			
+
 			// The materials that are being placed. Has to be simple I think
 			sb.AppendLine("\tObjectType: \"Material\" {");
 			sb.AppendLine("\t\tCount: 1");

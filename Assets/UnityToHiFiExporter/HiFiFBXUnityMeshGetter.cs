@@ -37,57 +37,59 @@ using UnityEngine;
 using System.Collections;
 using System.Text;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace HiFiExporter
 {
 	public class HiFiFBXUnityMeshGetter
 	{
+		private static readonly CultureInfo ic = CultureInfo.InvariantCulture;
 
 		private static long GetRandomFBXId()
 		{
 			return System.BitConverter.ToInt64(System.Guid.NewGuid().ToByteArray(), 0);
 		}
 
-        /// <summary>
-        /// Gets all the meshes and outputs to a string (even grabbing the child of each gameObject if includeChildren is true
-        /// </summary>
-        /// <returns>The mesh to string.</returns>
-        /// <param name="gameObj">GameObject Parent.</param>
-        /// <param name="materials">Every Material in the parent that can be accessed.</param>
-        /// <param name="objects">The StringBuidler to create objects for the FBX file.</param>
-        /// <param name="connections">The StringBuidler to create connections for the FBX file.</param>
-        /// <param name="parentObject">Parent object, if left null this is the top parent.</param>
-        /// <param name="parentModelId">Parent model id, 0 if top parent.</param>
-        public static long GetMeshToString(GameObject gameObj,
-                                           Material[] materials,
-                                           ref StringBuilder objects,
-                                           ref StringBuilder connections,
-                                           GameObject parentObject = null,
-			                               long parentModelId = 0,
+		/// <summary>
+		/// Gets all the meshes and outputs to a string (even grabbing the child of each gameObject if includeChildren is true
+		/// </summary>
+		/// <returns>The mesh to string.</returns>
+		/// <param name="gameObj">GameObject Parent.</param>
+		/// <param name="materials">Every Material in the parent that can be accessed.</param>
+		/// <param name="objects">The StringBuidler to create objects for the FBX file.</param>
+		/// <param name="connections">The StringBuidler to create connections for the FBX file.</param>
+		/// <param name="parentObject">Parent object, if left null this is the top parent.</param>
+		/// <param name="parentModelId">Parent model id, 0 if top parent.</param>
+		public static long GetMeshToString(GameObject gameObj,
+										   Material[] materials,
+										   ref StringBuilder objects,
+										   ref StringBuilder connections,
+										   GameObject parentObject = null,
+										   long parentModelId = 0,
 										   bool includeChildren = true,
-			                               bool disableRotationAndScale = false)
-        {
-            StringBuilder tempObjectSb = new StringBuilder();
-            StringBuilder tempConnectionsSb = new StringBuilder();
+										   bool disableRotationAndScale = false)
+		{
+			StringBuilder tempObjectSb = new StringBuilder();
+			StringBuilder tempConnectionsSb = new StringBuilder();
 
-            long geometryId = GetRandomFBXId();
-            long modelId = GetRandomFBXId();
+			long geometryId = GetRandomFBXId();
+			long modelId = GetRandomFBXId();
 
-            // Sees if there is a skinned mesh renderer or regular mesh. Skinned meshes are baked into whatever pose they have and are exported
-            MeshFilter filter = gameObj.GetComponent<MeshFilter>();
+			// Sees if there is a skinned mesh renderer or regular mesh. Skinned meshes are baked into whatever pose they have and are exported
+			MeshFilter filter = gameObj.GetComponent<MeshFilter>();
 			SkinnedMeshRenderer skinnedMesh = gameObj.GetComponent<SkinnedMeshRenderer>();
 
 			Mesh meshToExport = new Mesh();
-			if(filter != null)
+			if (filter != null)
 				meshToExport = filter.sharedMesh;
-			else if(skinnedMesh != null)
+			else if (skinnedMesh != null)
 			{
 				meshToExport = new Mesh();
 				skinnedMesh.BakeMesh(meshToExport);
 			}
-				
 
-			if(meshToExport == null)
+
+			if (meshToExport == null)
 				Debug.LogError("Couldn't find a filter name");
 
 			string meshName = gameObj.name;
@@ -95,18 +97,18 @@ namespace HiFiExporter
 			// A NULL parent means that the gameObject is at the top
 			string isMesh = "Null";
 
-			if(meshToExport != null)
+			if (meshToExport != null)
 			{
 				meshName = meshToExport.name;
 				isMesh = "Mesh";
 			}
 
-			if(meshName == "")
+			if (meshName == "")
 			{
 				meshName = "Skinned Mesh " + Random.Range(0, 1000000);
 			}
 
-			if(parentModelId == 0)
+			if (parentModelId == 0)
 				tempConnectionsSb.AppendLine("\t;Model::" + meshName + ", Model::RootNode");
 			else
 				tempConnectionsSb.AppendLine("\t;Model::" + meshName + ", Model::USING PARENT");
@@ -126,28 +128,28 @@ namespace HiFiExporter
 			tempObjectSb.Append("\t\t\tP: \"Lcl Translation\", \"Lcl Translation\", \"\", \"A+\",");
 
 			// Append the X Y Z coords to the system
-			tempObjectSb.AppendFormat("{0},{1},{2}", position.x * - 1, position.y, position.z);
+			tempObjectSb.AppendFormat(ic, "{0},{1},{2}", position.x * -1, position.y, position.z);
 			tempObjectSb.AppendLine();
 
 			// Rotates the object correctly from Unity space
-			if(disableRotationAndScale == false)
+			if (disableRotationAndScale == false)
 			{
 				Vector3 localRotation = gameObj.transform.localEulerAngles;
-				tempObjectSb.AppendFormat("\t\t\tP: \"Lcl Rotation\", \"Lcl Rotation\", \"\", \"A+\",{0},{1},{2}", localRotation.x, localRotation.y * -1, -1 * localRotation.z);
+				tempObjectSb.AppendFormat(ic, "\t\t\tP: \"Lcl Rotation\", \"Lcl Rotation\", \"\", \"A+\",{0},{1},{2}", localRotation.x, localRotation.y * -1, -1 * localRotation.z);
 			}
 			else
-				tempObjectSb.AppendFormat("\t\t\tP: \"Lcl Rotation\", \"Lcl Rotation\", \"\", \"A+\",{0},{1},{2}", 0, 0, 0);
+				tempObjectSb.AppendFormat(ic, "\t\t\tP: \"Lcl Rotation\", \"Lcl Rotation\", \"\", \"A+\",{0},{1},{2}", 0, 0, 0);
 
 			tempObjectSb.AppendLine();
 
 			// Adds the local scale of this object
-			if(disableRotationAndScale == false)
+			if (disableRotationAndScale == false)
 			{
-			    Vector3 localScale = gameObj.transform.localScale;
-			    tempObjectSb.AppendFormat("\t\t\tP: \"Lcl Scaling\", \"Lcl Scaling\", \"\", \"A\",{0},{1},{2}", localScale.x, localScale.y, localScale.z);
+				Vector3 localScale = gameObj.transform.localScale;
+				tempObjectSb.AppendFormat(ic, "\t\t\tP: \"Lcl Scaling\", \"Lcl Scaling\", \"\", \"A\",{0},{1},{2}", localScale.x, localScale.y, localScale.z);
 			}
 			else
-				tempObjectSb.AppendFormat("\t\t\tP: \"Lcl Scaling\", \"Lcl Scaling\", \"\", \"A\",{0},{1},{2}", 1, 1, 1);
+				tempObjectSb.AppendFormat(ic, "\t\t\tP: \"Lcl Scaling\", \"Lcl Scaling\", \"\", \"A\",{0},{1},{2}", 1, 1, 1);
 			tempObjectSb.AppendLine();
 
 			tempObjectSb.AppendLine("\t\t\tP: \"currentUVSet\", \"KString\", \"\", \"U\", \"map1\"");
@@ -157,7 +159,7 @@ namespace HiFiExporter
 			tempObjectSb.AppendLine("\t}");
 
 			// Adds in geometry if it exists, if it it does not exist, this is a empty gameObject file and skips over this
-			if(meshToExport != null)
+			if (meshToExport != null)
 			{
 				Mesh mesh = meshToExport;
 
@@ -167,25 +169,25 @@ namespace HiFiExporter
 				// Generate the geometry information for the mesh created
 
 				tempObjectSb.AppendLine("\tGeometry: " + geometryId + ", \"Geometry::\", \"Mesh\" {");
-				
+
 				// ===== WRITE THE VERTICIES =====
 				Vector3[] verticies = mesh.vertices;
 				int vertCount = mesh.vertexCount * 3; // <= because the list of points is just a list of comma seperated values, we need to multiply by three
 
 				tempObjectSb.AppendLine("\t\tVertices: *" + vertCount + " {");
 				tempObjectSb.Append("\t\t\ta: ");
-				for(int i = 0; i < verticies.Length; i++)
+				for (int i = 0; i < verticies.Length; i++)
 				{
-					if(i > 0)
+					if (i > 0)
 						tempObjectSb.Append(",");
 
 					// Points in the verticies. We also reverse the x value because Unity has a reverse X coordinate
-					tempObjectSb.AppendFormat("{0},{1},{2}", verticies[i].x * - 1, verticies[i].y, verticies[i].z);
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2}", verticies[i].x * -1, verticies[i].y, verticies[i].z);
 				}
 
 				tempObjectSb.AppendLine();
 				tempObjectSb.AppendLine("\t\t} ");
-				
+
 				// ======= WRITE THE TRIANGLES ========
 				int triangleCount = mesh.triangles.Length;
 				int[] triangles = mesh.triangles;
@@ -194,16 +196,16 @@ namespace HiFiExporter
 
 				// Write triangle indexes
 				tempObjectSb.Append("\t\t\ta: ");
-				for(int i = 0; i < triangleCount; i += 3)
+				for (int i = 0; i < triangleCount; i += 3)
 				{
-					if(i > 0)
+					if (i > 0)
 						tempObjectSb.Append(",");
 
 					// To get the correct normals, must rewind the triangles since we flipped the x direction
-					tempObjectSb.AppendFormat("{0},{1},{2}", 
-					                          triangles[i],
-					                          triangles[i + 2], 
-					                          (triangles[i + 1] * -1) - 1); // <= Tells the poly is ended
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2}",
+											  triangles[i],
+											  triangles[i + 2],
+											  (triangles[i + 1] * -1) - 1); // <= Tells the poly is ended
 
 				}
 
@@ -216,52 +218,52 @@ namespace HiFiExporter
 				tempObjectSb.AppendLine("\t\t\tName: \"\"");
 				tempObjectSb.AppendLine("\t\t\tMappingInformationType: \"ByPolygonVertex\"");
 				tempObjectSb.AppendLine("\t\t\tReferenceInformationType: \"Direct\"");
-				
+
 				// ===== WRITE THE NORMALS ==========
 				Vector3[] normals = mesh.normals;
 
 				tempObjectSb.AppendLine("\t\t\tNormals: *" + (triangleCount * 3) + " {");
 				tempObjectSb.Append("\t\t\t\ta: ");
 
-				for(int i = 0; i < triangleCount; i += 3)
+				for (int i = 0; i < triangleCount; i += 3)
 				{
-					if(i > 0)
+					if (i > 0)
 						tempObjectSb.Append(",");
 
 					// To get the correct normals, must rewind the normal triangles like the triangles above since x was flipped
 					Vector3 newNormal = normals[triangles[i]];
 
-					tempObjectSb.AppendFormat("{0},{1},{2},", 
-					                         newNormal.x * -1, // Switch normal as is tradition
-					                         newNormal.y, 
-					                         newNormal.z);
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2},",
+											 newNormal.x * -1, // Switch normal as is tradition
+											 newNormal.y,
+											 newNormal.z);
 
 					newNormal = normals[triangles[i + 2]];
 
-					tempObjectSb.AppendFormat("{0},{1},{2},", 
-					                          newNormal.x * -1, // Switch normal as is tradition
-					                          newNormal.y, 
-					                          newNormal.z);
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2},",
+											  newNormal.x * -1, // Switch normal as is tradition
+											  newNormal.y,
+											  newNormal.z);
 
 					newNormal = normals[triangles[i + 1]];
 
-					tempObjectSb.AppendFormat("{0},{1},{2}", 
-					                          newNormal.x * -1, // Switch normal as is tradition
-					                          newNormal.y, 
-					                          newNormal.z);
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2}",
+											  newNormal.x * -1, // Switch normal as is tradition
+											  newNormal.y,
+											  newNormal.z);
 				}
 
 				tempObjectSb.AppendLine();
 				tempObjectSb.AppendLine("\t\t\t}");
 				tempObjectSb.AppendLine("\t\t}");
-				
+
 				// ===== WRITE THE COLORS =====
 				bool containsColors = mesh.colors.Length == verticies.Length;
-				
-				if(containsColors)
+
+				if (containsColors)
 				{
 					Color[] colors = mesh.colors;
-                
+
 					Dictionary<Color, int> colorTable = new Dictionary<Color, int>(); // reducing amount of data by only keeping unique colors.
 					int idx = 0;
 
@@ -289,7 +291,7 @@ namespace HiFiExporter
 						if (!first)
 							tempObjectSb.Append(",");
 
-						tempObjectSb.AppendFormat("{0},{1},{2},{3}", color.Key.r, color.Key.g, color.Key.b, color.Key.a);
+						tempObjectSb.AppendFormat(ic, "{0},{1},{2},{3}", color.Key.r, color.Key.g, color.Key.b, color.Key.a);
 						first = false;
 					}
 					tempObjectSb.AppendLine();
@@ -315,7 +317,7 @@ namespace HiFiExporter
 						index2 = colorTable[colors[index2]];
 						index3 = colorTable[colors[index3]];
 
-						tempObjectSb.AppendFormat("{0},{1},{2}", index1, index2, index3);
+						tempObjectSb.AppendFormat(ic, "{0},{1},{2}", index1, index2, index3);
 					}
 
 					tempObjectSb.AppendLine();
@@ -324,9 +326,9 @@ namespace HiFiExporter
 					tempObjectSb.AppendLine("\t\t}");
 				}
 				else
-                    Debug.LogWarning("Mesh contains " + mesh.vertices.Length + " vertices for " + mesh.colors.Length + " colors. Skip color export");
-				
-                
+					Debug.LogWarning("Mesh contains " + mesh.vertices.Length + " vertices for " + mesh.colors.Length + " colors. Skip color export");
+
+
 
 				// ================ UV CREATION =========================
 
@@ -342,12 +344,12 @@ namespace HiFiExporter
 				tempObjectSb.AppendLine("\t\t\tUV: *" + uvLength * 2 + " {");
 				tempObjectSb.Append("\t\t\t\ta: ");
 
-				for(int i = 0; i < uvLength; i++)
+				for (int i = 0; i < uvLength; i++)
 				{
-					if(i > 0)
+					if (i > 0)
 						tempObjectSb.Append(",");
 
-					tempObjectSb.AppendFormat("{0},{1}", uvs[i].x, uvs[i].y);
+					tempObjectSb.AppendFormat(ic, "{0},{1}", uvs[i].x, uvs[i].y);
 
 				}
 				tempObjectSb.AppendLine();
@@ -355,20 +357,20 @@ namespace HiFiExporter
 				tempObjectSb.AppendLine("\t\t\t\t}");
 
 				// UV tile index coords
-				tempObjectSb.AppendLine("\t\t\tUVIndex: *" + triangleCount +" {");
+				tempObjectSb.AppendLine("\t\t\tUVIndex: *" + triangleCount + " {");
 				tempObjectSb.Append("\t\t\t\ta: ");
 
-				for(int i = 0; i < triangleCount; i += 3)
+				for (int i = 0; i < triangleCount; i += 3)
 				{
-					if(i > 0)
+					if (i > 0)
 						tempObjectSb.Append(",");
 
 					// Triangles need to be fliped for the x flip
 					int index1 = triangles[i];
-					int index2 = triangles[i+2];
-					int index3 = triangles[i+1];
+					int index2 = triangles[i + 2];
+					int index3 = triangles[i + 1];
 
-					tempObjectSb.AppendFormat("{0},{1},{2}", index1, index2, index3);
+					tempObjectSb.AppendFormat(ic, "{0},{1},{2}", index1, index2, index3);
 				}
 
 				tempObjectSb.AppendLine();
@@ -398,11 +400,11 @@ namespace HiFiExporter
 				StringBuilder submeshesSb = new StringBuilder();
 
 				// For just one submesh, we set them all to zero
-				if(numberOfSubmeshes == 1)
+				if (numberOfSubmeshes == 1)
 				{
 					int numFaces = triangles.Length / 3;
 
-					for(int i = 0; i < numFaces; i++)
+					for (int i = 0; i < numFaces; i++)
 					{
 						submeshesSb.Append("0,");
 						totalFaceCount++;
@@ -411,21 +413,21 @@ namespace HiFiExporter
 				else
 				{
 					List<int[]> allSubmeshes = new List<int[]>();
-					
+
 					// Load all submeshes into a space
-					for(int i = 0; i < numberOfSubmeshes; i++)
+					for (int i = 0; i < numberOfSubmeshes; i++)
 						allSubmeshes.Add(mesh.GetIndices(i));
 
 					// TODO: Optimize this search pattern
-					for(int i = 0; i < triangles.Length; i += 3)
+					for (int i = 0; i < triangles.Length; i += 3)
 					{
-						for(int subMeshIndex = 0; subMeshIndex < allSubmeshes.Count; subMeshIndex++)
+						for (int subMeshIndex = 0; subMeshIndex < allSubmeshes.Count; subMeshIndex++)
 						{
 							bool breaker = false;
-							
-							for(int n = 0; n < allSubmeshes[subMeshIndex].Length; n += 3)
+
+							for (int n = 0; n < allSubmeshes[subMeshIndex].Length; n += 3)
 							{
-								if(triangles[i] == allSubmeshes[subMeshIndex][n]
+								if (triangles[i] == allSubmeshes[subMeshIndex][n]
 								   && triangles[i + 1] == allSubmeshes[subMeshIndex][n + 1]
 								   && triangles[i + 2] == allSubmeshes[subMeshIndex][n + 2])
 								{
@@ -434,8 +436,8 @@ namespace HiFiExporter
 									totalFaceCount++;
 									break;
 								}
-								
-								if(breaker)
+
+								if (breaker)
 									break;
 							}
 						}
@@ -463,7 +465,7 @@ namespace HiFiExporter
 				tempObjectSb.AppendLine("\t\t\t\tType: \"LayerElementTexture\"");
 				tempObjectSb.AppendLine("\t\t\t\tTypedIndex: 0");
 				tempObjectSb.AppendLine("\t\t\t}");
-				if(containsColors)
+				if (containsColors)
 				{
 					tempObjectSb.AppendLine("\t\t\tLayerElement:  {");
 					tempObjectSb.AppendLine("\t\t\t\tType: \"LayerElementColor\"");
@@ -475,10 +477,10 @@ namespace HiFiExporter
 				tempObjectSb.AppendLine("\t\t\t\tTypedIndex: 0");
 				tempObjectSb.AppendLine("\t\t\t}");
 				// TODO: Here we would add UV layer 1 for ambient occlusion UV file
-	//			tempObjectSb.AppendLine("\t\t\tLayerElement:  {");
-	//			tempObjectSb.AppendLine("\t\t\t\tType: \"LayerElementUV\"");
-	//			tempObjectSb.AppendLine("\t\t\t\tTypedIndex: 1");
-	//			tempObjectSb.AppendLine("\t\t\t}");
+				//			tempObjectSb.AppendLine("\t\t\tLayerElement:  {");
+				//			tempObjectSb.AppendLine("\t\t\t\tType: \"LayerElementUV\"");
+				//			tempObjectSb.AppendLine("\t\t\t\tTypedIndex: 1");
+				//			tempObjectSb.AppendLine("\t\t\t}");
 				tempObjectSb.AppendLine("\t\t}");
 				tempObjectSb.AppendLine("\t}");
 
@@ -489,16 +491,16 @@ namespace HiFiExporter
 
 				// Add the connection of all the materials in order of submesh
 				MeshRenderer meshRenderer = gameObj.GetComponent<MeshRenderer>();
-				if(meshRenderer != null)
+				if (meshRenderer != null)
 				{
 					Material[] allMaterialsInThisMesh = meshRenderer.sharedMaterials;
 
-					for(int i = 0; i < allMaterialsInThisMesh.Length; i++)
+					for (int i = 0; i < allMaterialsInThisMesh.Length; i++)
 					{
 						Material mat = allMaterialsInThisMesh[i];
 						int referenceId = Mathf.Abs(mat.GetInstanceID());
-		
-						if(mat == null)
+
+						if (mat == null)
 						{
 							Debug.LogError("ERROR: the game object " + gameObj.name + " has an empty material on it. This will export problematic files. Please fix and reexport");
 							continue;
@@ -511,10 +513,10 @@ namespace HiFiExporter
 				}
 			}
 
-			if(includeChildren == true)
+			if (includeChildren == true)
 			{
 				// Recursively add all the other objects to the string that has been built.
-				for(int i = 0; i < gameObj.transform.childCount; i++)
+				for (int i = 0; i < gameObj.transform.childCount; i++)
 				{
 					GameObject childObject = gameObj.transform.GetChild(i).gameObject;
 
@@ -528,4 +530,10 @@ namespace HiFiExporter
 			return modelId;
 		}
 	}
+}
+public static class ConverterExtensions
+{
+	//Helper function to convert floats to string without commas
+	public static string F(this float x) => x.ToString("G", CultureInfo.InvariantCulture);
+	public static string F(this double x) => x.ToString("G", CultureInfo.InvariantCulture);
 }
