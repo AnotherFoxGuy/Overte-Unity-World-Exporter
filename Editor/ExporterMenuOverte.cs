@@ -78,10 +78,7 @@ namespace OverteExporter
                 return;
             }
 
-            if (lastJsonPath == "")
-                lastJsonPath = Application.dataPath;
-            else
-                lastJsonPath = FindRootPath(lastJsonPath);
+            lastJsonPath = lastJsonPath == "" ? Application.dataPath : FindRootPath(lastJsonPath);
 
             if (lastGltfFileName == "")
                 lastGltfFileName = "UnityOverteExport.json";
@@ -132,13 +129,13 @@ namespace OverteExporter
                 // Now we select the object and all its children
                 GameObject[] selected = Selection.gameObjects;
 
-                for (int selectedIndex = 0; selectedIndex < selected.Length; selectedIndex++)
+                foreach (var s in selected)
                 {
-                    Transform[] childTransforms = selected[selectedIndex].GetComponentsInChildren<Transform>();
-                    for (int i = 0; i < childTransforms.Length; i++)
+                    Transform[] childTransforms = s.GetComponentsInChildren<Transform>();
+                    foreach (var c in childTransforms)
                     {
-                        if (gameObjectsSelected.Contains(childTransforms[i].gameObject) == false)
-                            gameObjectsSelected.Add(childTransforms[i].gameObject);
+                        if (gameObjectsSelected.Contains(c.gameObject) == false)
+                            gameObjectsSelected.Add(c.gameObject);
                     }
                 }
             } // If there are no objects selected, export the entire scene
@@ -148,27 +145,27 @@ namespace OverteExporter
                 gameObjectsSelected.AddRange(gameObjects);
             }
 
-            for (int i = 0; i < gameObjectsSelected.Count; i++)
+            foreach (var gameobject in gameObjectsSelected)
             {
                 // skip if gameobject is a camera
                 // ALL THE EXCEPTIONS
-                if (gameObjectsSelected[i].GetComponent<Camera>()
-                    || gameObjectsSelected[i].transform.root
+                if (gameobject.GetComponent<Camera>()
+                    || gameobject.transform.root
                         .GetComponent<Canvas>() // HACK to make sure we don't export the huge canvas
                    )
                     continue;
-                else if (gameObjectsSelected[i].GetComponent<Light>()) // TODO - reintroduce exporting lights
-                    gameObjectsToExport.Add(gameObjectsSelected[i]);
-                else if (gameObjectsSelected[i].activeInHierarchy)
-                    gameObjectsToExport.Add(gameObjectsSelected[i]);
+                else if (gameobject.GetComponent<Light>()) // TODO - reintroduce exporting lights
+                    gameObjectsToExport.Add(gameobject);
+                else if (gameobject.activeInHierarchy)
+                    gameObjectsToExport.Add(gameobject);
             }
 
             // Create guids for all unique game objects
             // These help HF take in all the information
-            for (int i = 0; i < gameObjectsToExport.Count; i++)
+            foreach (var gameobject in gameObjectsToExport)
             {
-                if (GUIDReference.ContainsKey(gameObjectsToExport[i]) == false)
-                    GUIDReference.Add(gameObjectsToExport[i], CreateNewGUID());
+                if (GUIDReference.ContainsKey(gameobject) == false)
+                    GUIDReference.Add(gameobject, CreateNewGUID());
                 else
                     Debug.LogError("Already contains a gameObject");
             }
