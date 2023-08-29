@@ -1,15 +1,15 @@
 ﻿// ===============================================================================================
-//	The MIT License (MIT) for UnityToHiFiExporter
+//	The MIT License (MIT) for UnityToOverteExporter
 //
 //  UnityFBXExporter was created for Building Crafter (http://u3d.as/ovC) a tool to rapidly 
 //	create high quality buildings right in Unity with no need to use 3D modeling programs.
 //
 //  Copyright (c) 2016 | 8Bit Goose Games, Inc.
 //
-//	UnityToHiFiExporter expanded upon the original code to export Unity scenes into 
+//	UnityToOverteExporter expanded upon the original code to export Unity scenes into
 //	High Fidelity (https://highfidelity.com/) an early-stage technology lab experimenting 
 //	with Virtual Worlds and VR. Certain functions have been rewritten specificly to export 
-//	into HiFi, so if you want a generalized Unity FBX exporter, please take a look at the 
+//	into Overte, so if you want a generalized Unity FBX exporter, please take a look at the
 //	original repo.
 //
 //	Copyright (c) 2018 | High Fidelity, Inc.
@@ -41,7 +41,7 @@ using System.Linq;
 /// <summary>
 /// Random Utilities file to help the exporter and provide additional debugging
 /// </summary>
-public static class UtiltiesHiFi
+public static class UtiltiesOverte
 {
 
 	public static string ReplaceAnySmallNumbersWithZeros(string jsonString)

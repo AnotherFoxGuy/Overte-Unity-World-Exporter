@@ -1,16 +1,5 @@
 ﻿// ===============================================================================================
-//	The MIT License (MIT) for UnityToHiFiExporter
-//
-//  UnityFBXExporter was created for Building Crafter (http://u3d.as/ovC) a tool to rapidly 
-//	create high quality buildings right in Unity with no need to use 3D modeling programs.
-//
-//  Copyright (c) 2016 | 8Bit Goose Games, Inc.
-//
-//	UnityToHiFiExporter expanded upon the original code to export Unity scenes into 
-//	High Fidelity (https://highfidelity.com/) an early-stage technology lab experimenting 
-//	with Virtual Worlds and VR. Certain functions have been rewritten specificly to export 
-//	into HiFi, so if you want a generalized Unity FBX exporter, please take a look at the 
-//	original repo.
+//	The MIT License (MIT) for UnityToOverteExporter
 //
 //	Copyright (c) 2018 | High Fidelity, Inc.
 //		
@@ -39,11 +28,10 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 using System.IO;
-using HiFiExporter;
+using GLTFast.Export;
 using System.Linq;
 
-
-namespace HiFiExporter 
+namespace OverteExporter
 {
 	/// <summary>
 	/// Used to tell what type of object is being exported
@@ -58,7 +46,7 @@ namespace HiFiExporter
 		Obj // NOTE: Currently not used
 	}
 
-    public class ExporterMenuHiFi : Editor 
+    public class ExporterMenuOverte : Editor 
 	{
         // Global Variables
 		/// <summary>Sets up a list of GUIDs for all the gameObjects to be exported, for parenting and id tagging reasons</summary>
@@ -68,7 +56,7 @@ namespace HiFiExporter
 		private static string lastFbxFileName = "";
 
         // Dropdown
-		[MenuItem("GameObject/Export Scene or Selected Objs to HiFi %#e", false, 40)]
+		[MenuItem("GameObject/Export Scene or Selected Objs to Overte %#e", false, 40)]
         public static void ExportDropdownGameObjectToFBX() 
 		{
 			EditorUtility.ClearProgressBar(); // Ensures that any progress bar has been cleared before starting
@@ -85,7 +73,7 @@ namespace HiFiExporter
 				lastJsonPath = FindRootPath(lastJsonPath);
 
 			if(lastFbxFileName == "")
-				lastFbxFileName = "UnityHiFiExport.json";
+				lastFbxFileName = "UnityOverteExport.json";
 			
 			string newJsonPath = EditorUtility.SaveFilePanel("Save as JSON filename", lastJsonPath, lastFbxFileName, "json");
 
@@ -194,7 +182,7 @@ namespace HiFiExporter
 				Directory.CreateDirectory(fbxExportPath);
 
 			// We go through all the parent gameObjects and find the center of the bounding box. We will then offset
-			// by this amount so when you import something into HiFi it doesn't get placed very far away
+			// by this amount so when you import something into Overte it doesn't get placed very far away
 
 			Bounds boundsForAllObjects = new Bounds();
 			bool boundsInit = false;
@@ -233,7 +221,7 @@ namespace HiFiExporter
 
 				// First we make sure to export the rotation, position and scale correctly for all the objects
 				GameObject gameObj = gameObjectsToExport[gameObjectIndex];
-				HiFiJsonObject jsonObject = new HiFiJsonObject();
+				OverteJsonObject jsonObject = new OverteJsonObject();
 
 				// Set up ids and parent ids if applicable
 				jsonObject.parentID = FindProperParentGUID(gameObj, GUIDReference);
@@ -417,7 +405,7 @@ namespace HiFiExporter
 					if(skinnedMeshRenderer != null)
 						exportType = ExportType.SkinnedMesh;
 
-					// HACK - planes and quads do not export correctly, so instead we are exporting them as HiFi simple objects
+					// HACK - planes and quads do not export correctly, so instead we are exporting them as Overte simple objects
 					if(assetFileName == "unity default resources" && (objectMesh.name == "Plane" || objectMesh.name == "Quad"))
 						exportType = ExportType.PlaneOrQuad;
 
@@ -462,6 +450,7 @@ namespace HiFiExporter
 							assetFileName = MakeUniqueAssetFileName(assetFileName, fbxExportPath);
 
 							bool success = HighFidelityFBXExporter.ExportGameObjToFBX(gameObj, fbxExportPath + assetFileName, true, true);
+							var export = new GameObjectExport();
 							if(success == false)
 								Debug.Log("Failed to export item " + assetFileName);
 
@@ -590,7 +579,7 @@ namespace HiFiExporter
 					}
 				}
 
-				// Offsets the whole group by the center so it imports closed to the player in HiFi
+				// Offsets the whole group by the center so it imports closed to the player in Overte
 				if(jsonObject.parentID == GetBlankID())
 				{
 					Vector3 reversedBounds = boundsForAllObjects.center;
@@ -603,7 +592,7 @@ namespace HiFiExporter
 				// If we have an object mesh, we simplify the jsonObject to remove the light information
 				// This is a bit messy because it is inversed parenting, but changing it to use inheritance would cause more issues at this time
 				if(objectMesh != null)
-					jsonString = JsonUtility.ToJson(new HiFiModelObject(jsonObject), true);
+					jsonString = JsonUtility.ToJson(new OverteModelObject(jsonObject), true);
 				
 				jsonOutput.Append(jsonString);
 				jsonOutput.Append(",");
@@ -846,7 +835,7 @@ namespace HiFiExporter
 		/// <param name="extension">Extension must be "*.fbx" or "*.fbx.meta"</param></param>
 		public static void DeleteFileAtPath(string jsonPath, string extension)
 		{
-			jsonPath = UtiltiesHiFi.GetFolderFromPath(jsonPath);
+			jsonPath = UtiltiesOverte.GetFolderFromPath(jsonPath);
 
 			// Set up the directory for the fbx files
 			string fbxExportPath = jsonPath + @"FBXObjects/";
@@ -958,7 +947,7 @@ namespace HiFiExporter
 //		}
 
 		// Below is the old reference code from when Kellan took over the project
-//		// To convert parentID and ID to HiFi compatible string
+//		// To convert parentID and ID to Overte compatible string
 //		private static string convertIDToString (int ID) 
 //		{
 //			return ID.ToString("{00000000-0000-0000-0000-000000000000}");
