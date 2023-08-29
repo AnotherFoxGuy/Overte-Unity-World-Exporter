@@ -1,7 +1,7 @@
 ﻿// ===============================================================================================
 //	The MIT License (MIT) for UnityToOverteExporter
 //
-//	Copyright (c) 2018 | High Fidelity, Inc.
+//	Copyright (c) 2018 | Overte, Inc.
 //		
 //	Permission is hereby granted, free of charge, to any person obtaining a copy 
 //	of this software and associated documentation files (the "Software"), to deal 
@@ -30,6 +30,7 @@ using System.Text;
 using System.IO;
 using GLTFast.Export;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace OverteExporter
 {
@@ -42,7 +43,7 @@ namespace OverteExporter
 		Procedural,
 		SkinnedMesh,
 		PlaneOrQuad,
-		Fbx, // NOTE: Currently not used
+		Gltf, // NOTE: Currently not used
 		Obj // NOTE: Currently not used
 	}
 
@@ -53,17 +54,23 @@ namespace OverteExporter
 		public static Dictionary<GameObject, string> GUIDReference = new Dictionary<GameObject, string>();
 		/// <summary>The path to export the json file to</summary>
 		private static string lastJsonPath = "";
-		private static string lastFbxFileName = "";
+		private static string lastGltfFileName = "";
+
+		// ExportSettings provides generic export settings
+        private static readonly ExportSettings GltfExportSettings = new ExportSettings {
+			Format = GltfFormat.Json,
+			FileConflictResolution = FileConflictResolution.Overwrite,
+		};
 
         // Dropdown
 		[MenuItem("GameObject/Export Scene or Selected Objs to Overte %#e", false, 40)]
-        public static void ExportDropdownGameObjectToFBX() 
+        public static void ExportDropdownGameObjectToGltf()
 		{
 			EditorUtility.ClearProgressBar(); // Ensures that any progress bar has been cleared before starting
 
 			if(Application.isPlaying)
 			{
-				Debug.LogError("Can't export while in play mode. If you would like this, please visit High Fidelity's github repo / forums and leave a comment.");
+				Debug.LogError("Can't export while in play mode. If you would like this, please visit Overte's github repo / forums and leave a comment.");
 				return;
 			}
 
@@ -72,17 +79,17 @@ namespace OverteExporter
 			else
 				lastJsonPath = FindRootPath(lastJsonPath);
 
-			if(lastFbxFileName == "")
-				lastFbxFileName = "UnityOverteExport.json";
+			if(lastGltfFileName == "")
+				lastGltfFileName = "UnityOverteExport.json";
 			
-			string newJsonPath = EditorUtility.SaveFilePanel("Save as JSON filename", lastJsonPath, lastFbxFileName, "json");
+			string newJsonPath = EditorUtility.SaveFilePanel("Save as JSON filename", lastJsonPath, lastGltfFileName, "json");
 
 			if(newJsonPath == "")
 				return;
 
 			lastJsonPath = newJsonPath;
 
-			lastFbxFileName = GetFileName(lastJsonPath);
+			lastGltfFileName = GetFileName(lastJsonPath);
 
 			// Note, we have to pause before we execute the export current game object
 			// So we call on this separate window to help choose where the URL should go.
@@ -100,9 +107,9 @@ namespace OverteExporter
 		/// </summary>
 		public static void ExportCurrentGameObjects()
 		{
-			EditorUtility.DisplayProgressBar("Exporting FBX files", "Progress", 0);
+			EditorUtility.DisplayProgressBar("Exporting Gltf files", "Progress", 0);
 
-			// Destroy all the FBX files at the path so we don't constantly save over everything
+			// Destroy all the Gltf files at the path so we don't constantly save over everything
 			CleanUpAnyOldFiles(lastJsonPath);
 
 			GUIDReference.Clear();
@@ -171,53 +178,51 @@ namespace OverteExporter
 		}
 
 
-		public static void ExportGameObjectAsJsonToHF(List<GameObject> gameObjectsToExport, string rootPath, string fileName) 
+		public static async void ExportGameObjectAsJsonToHF(List<GameObject> gameObjectsToExport, string rootPath, string fileName)
 		{
 			// Used to prevent duplicate meshes being created
 			Dictionary<string, string> meshReference = new Dictionary<string, string>();
 
-			// Set up the directory for the fbx files
-			string fbxExportPath = rootPath + @"FBXObjects/";
-			if(Directory.Exists(fbxExportPath) == false)
-				Directory.CreateDirectory(fbxExportPath);
+			// Set up the directory for the Gltf files
+			string gltfExportPath = rootPath + @"GltfObjects/";
+			if(Directory.Exists(gltfExportPath) == false)
+				Directory.CreateDirectory(gltfExportPath);
 
 			// We go through all the parent gameObjects and find the center of the bounding box. We will then offset
 			// by this amount so when you import something into Overte it doesn't get placed very far away
 
 			Bounds boundsForAllObjects = new Bounds();
 			bool boundsInit = false;
-			for(int i = 0; i < gameObjectsToExport.Count; i++)
-			{
+			foreach (var t in gameObjectsToExport)
+            {
+                Transform trans = t.transform;
 
+                if(trans.parent != null && GUIDReference.ContainsKey(trans.parent.gameObject) == true)
+                    continue;
 
-				Transform trans = gameObjectsToExport[i].transform;
+                // HACK - skip the directional light and area lights since we skip them below
+                // When area / directional lights are added, remove the 3 lines.
+                Light light = trans.gameObject.GetComponent<Light>();
+                if(light != null && (light.type == LightType.Directional || light.type == LightType.Area))
+                    continue;
+                // END HACK
 
-				if(trans.parent != null && GUIDReference.ContainsKey(trans.parent.gameObject) == true)
-					continue;
+                // NOTE: If you use "continue" in the loop to NOT write out any objects to the json component, we have to add an exception here.
 
-				// HACK - skip the directional light and area lights since we skip them below
-				// When area / directional lights are added, remove the 3 lines.
-				Light light = trans.gameObject.GetComponent<Light>();
-				if(light != null && (light.type == LightType.Directional || light.type == LightType.Area))
-					continue;
-				// END HACK
-
-				// NOTE: If you use "continue" in the loop to NOT write out any objects to the json component, we have to add an exception here.
-
-				// We no
-				if(boundsInit == false)
-				{
-					boundsForAllObjects = new Bounds(trans.position, Vector3.zero);
-					boundsInit = true;
-				}
-				else
-					boundsForAllObjects.Encapsulate(trans.position);
-			}
+                // We no
+                if(boundsInit == false)
+                {
+                    boundsForAllObjects = new Bounds(trans.position, Vector3.zero);
+                    boundsInit = true;
+                }
+                else
+                    boundsForAllObjects.Encapsulate(trans.position);
+            }
 
 			StringBuilder jsonOutput = new StringBuilder("{\"Entities\":[");
 			for (int gameObjectIndex = 0; gameObjectIndex < gameObjectsToExport.Count; gameObjectIndex++)
 			{
-				EditorUtility.DisplayProgressBar("Exporting FBX files", "Progress", (float)gameObjectIndex / (float)gameObjectsToExport.Count);
+				EditorUtility.DisplayProgressBar("Exporting Gltf files", "Progress", (float)gameObjectIndex / (float)gameObjectsToExport.Count);
 
 				// First we make sure to export the rotation, position and scale correctly for all the objects
 				GameObject gameObj = gameObjectsToExport[gameObjectIndex];
@@ -242,7 +247,7 @@ namespace OverteExporter
 
 				Light light = gameObjectsToExport[gameObjectIndex].GetComponent<Light>();
 
-				// Offsets the position compared to the center of the mesh versus the FBX rotational point
+				// Offsets the position compared to the center of the mesh versus the Gltf rotational point
 				if(gameObj.transform.parent == null || hasParent == false)
 				{
 					jsonObject.position = gameObjectsToExport[gameObjectIndex].transform.position;
@@ -290,7 +295,7 @@ namespace OverteExporter
 				// now onto specific types of objects
 
 				// There are 3 types supported, meshes, lights and zones
-				// meshes are for 3D fbx objects exported
+				// meshes are for 3D Gltf objects exported
 				// lights will be exported only if they are spot / point
 				// everything that is not the above will be exported as a small zone
 
@@ -378,7 +383,7 @@ namespace OverteExporter
 					jsonObject.type = "Model"; // Tells the system this is a model
 					jsonObject.shapeType = "compound"; // Tells the system to use the mesh for collision in HF
 
-					// Find if we have a fbx file that is being reference,
+					// Find if we have a Gltf file that is being reference,
 					// If we do, extract that file, copy and reference this
 					string assetPath = "";
 					if(meshFilter != null)
@@ -391,14 +396,14 @@ namespace OverteExporter
 					string extension = GetFileExtension(assetPath).ToLower();
 					ExportType exportType = ExportType.Procedural;
 
-					if(extension == "fbx")
-						exportType = ExportType.Fbx;
+					if(extension == "Gltf")
+						exportType = ExportType.Gltf;
 					else if(extension == "obj")
 						exportType = ExportType.Obj;
 					else if(extension == "blend")
 						exportType = ExportType.Procedural;
 					
-					// -- HACK -- Always forcing to procedural so materials export correctly, this may change if we include FBX and OBJ copying
+					// -- HACK -- Always forcing to procedural so materials export correctly, this may change if we include Gltf and OBJ copying
 					exportType = ExportType.Procedural;
 
 					// Skinned meshes need to be baked into whatever pose they are in, so we have a different path for that
@@ -411,19 +416,19 @@ namespace OverteExporter
 
 					string relativeAssetFileName = "";
 
-					// Now either copy or create a new FBX file for export
+					// Now either copy or create a new Gltf file for export
 					switch(exportType)
 					{
-					case ExportType.Fbx:
-//						System.IO.File.Copy(fullAssetPath, fbxExportPath + assetFileName, true);
-//						relativeAssetFileName = "FBXObjects/" + assetFileName;
+					case ExportType.Gltf:
+//						System.IO.File.Copy(fullAssetPath, GltfExportPath + assetFileName, true);
+//						relativeAssetFileName = "GltfObjects/" + assetFileName;
 						break;
 
-					case ExportType.Obj: // No longer copying or exporting OBJ or FBX files so no longer needed
+					case ExportType.Obj: // No longer copying or exporting OBJ or Gltf files so no longer needed
 //						System.IO.File.Copy(fullAssetPath, objExportPath + assetFileName, true);
 //						// TODO - maybe copy the material file here too
 //						relativeAssetFileName = "ObjObjects/" + assetFileName;
-						Debug.LogError("Export type is either FBX or OBJ, this shouldn't be happening");
+						Debug.LogError("Export type is either Gltf or OBJ, this shouldn't be happening");
 						break;
 
 					case ExportType.Procedural:
@@ -434,9 +439,9 @@ namespace OverteExporter
 						else if(assetFileName == "unity default resources")
 							assetFileName = "UnityPrimitive";
 		
-						// Remove whatever ending this file has (like .blend) and add fbx for export
+						// Remove whatever ending this file has (like .blend) and add Gltf for export
 						assetFileName = RemoveFileExtension(assetFileName);
-						assetFileName += ".fbx";
+						assetFileName += ".gltf";
 					
 						MeshRenderer meshRenderer = gameObj.GetComponent<MeshRenderer>();
 
@@ -447,26 +452,29 @@ namespace OverteExporter
 						{
 							// Checks to see if the file name already exists (in the case of duplicates)
 							// and tacks on a unique number
-							assetFileName = MakeUniqueAssetFileName(assetFileName, fbxExportPath);
+							assetFileName = MakeUniqueAssetFileName(assetFileName, gltfExportPath);
 
-							bool success = HighFidelityFBXExporter.ExportGameObjToFBX(gameObj, fbxExportPath + assetFileName, true, true);
-							var export = new GameObjectExport();
+							//bool success = HighFidelityGltfExporter.ExportGameObjToGltf(gameObj, GltfExportPath + assetFileName, true, true);
+							var export = new GameObjectExport(GltfExportSettings);
+							export.AddScene(new []{gameObj});
+							bool success = await export.SaveToFileAndDispose(gltfExportPath + assetFileName);
+
 							if(success == false)
 								Debug.Log("Failed to export item " + assetFileName);
 
 							meshReference.Add(meshUniqueId, assetFileName);
 						}
 
-						relativeAssetFileName = "FBXObjects/" + WWW.EscapeURL(meshReference[meshUniqueId]).Replace("+","%20");
+						relativeAssetFileName = "GltfObjects/" + WWW.EscapeURL(meshReference[meshUniqueId]).Replace("+","%20");
 						break;
 
 					case ExportType.SkinnedMesh:
 						if(assetFileName == "")
 							assetFileName = "SkinnedMesh" + Random.Range(0, 1000000);
 
-						// Remove whatever ending this file has (like .blend) and add fbx for export
+						// Remove whatever ending this file has (like .blend) and add Gltf for export
 						assetFileName = RemoveFileExtension(assetFileName);
-						assetFileName += ".fbx";
+						assetFileName += ".gltf";
 
 						// Gets the unique mesh ID based on this object so we don't duplicate prefabs
 						string skinnedMeshUniqueId = objectMesh.GetInstanceID().ToString();
@@ -475,16 +483,20 @@ namespace OverteExporter
 						{
 							// Checks to see if the file name already exists (in the case of duplicates)
 							// and tacks on a unique number
-							assetFileName = MakeUniqueAssetFileName(assetFileName, fbxExportPath);
+							assetFileName = MakeUniqueAssetFileName(assetFileName, gltfExportPath);
 
-							bool skinnedSuccess = HighFidelityFBXExporter.ExportGameObjToFBX(gameObj, fbxExportPath + assetFileName, true, true);
-							if(skinnedSuccess == false)
-								Debug.Log("Failed to export item " + assetFileName);
+                            //bool skinnedSuccess = HighFidelityGltfExporter.ExportGameObjToGltf(gameObj, GltfExportPath + assetFileName, true, true);
+
+							var export = new GameObjectExport(GltfExportSettings);
+                            export.AddScene(new[] { gameObj });
+							bool skinnedSuccess = await export.SaveToFileAndDispose(gltfExportPath + assetFileName);
+                            if (skinnedSuccess == false)
+                                Debug.Log("Failed to export item " + assetFileName);
 
 							meshReference.Add(skinnedMeshUniqueId, assetFileName);
 						}
 
-						relativeAssetFileName = "FBXObjects/" + WWW.EscapeURL(meshReference[skinnedMeshUniqueId]).Replace("+","%20");
+						relativeAssetFileName = "GltfObjects/" + WWW.EscapeURL(meshReference[skinnedMeshUniqueId]).Replace("+","%20");
 						break;
 
 					case ExportType.PlaneOrQuad:
@@ -513,7 +525,7 @@ namespace OverteExporter
                     jsonObject.dimensions.y = dimensions.y * gameObj.transform.lossyScale.y;
                     jsonObject.dimensions.z = dimensions.z * gameObj.transform.lossyScale.z;
 
-                    // Offsets the position compared to the center of the mesh versus the FBX rotational point
+                    // Offsets the position compared to the center of the mesh versus the Gltf rotational point
                     if (gameObj.transform.parent == null || hasParent == false)
 					{
 						// If there is no parent, then we just offset by the world position
@@ -728,7 +740,7 @@ namespace OverteExporter
 		#region Error Checking Methods
 
 		/// <summary>
-		/// Checks to see if the player has skewed a Unity object, which won't translate well to High Fidelity
+		/// Checks to see if the player has skewed a Unity object, which won't translate well to Overte
 		/// </summary>
 		public static void CheckForParentSkew(GameObject gameObj, Dictionary<GameObject, string> guidRef)
 		{
@@ -756,8 +768,8 @@ namespace OverteExporter
             {
                 if(t.localScale != Vector3.one)
                 {
-                    Debug.LogError("GameObject " + gameObj.name + " has parent(s) with a different scale than 1, 1, 1. This will not translate to High Fidelity. " +
-                                   "Please fix and export again. Export will have completed, but some objects in High Fidelity will not transfer well.");
+                    Debug.LogError("GameObject " + gameObj.name + " has parent(s) with a different scale than 1, 1, 1. This will not translate to Overte. " +
+                                   "Please fix and export again. Export will have completed, but some objects in Overte will not transfer well.");
                 }
             }
 		}
@@ -820,32 +832,32 @@ namespace OverteExporter
 
 
 		/// <summary>
-		/// Cleansup files at the path plus FBXObjects
+		/// Cleansup files at the path plus GltfObjects
 		/// </summary>
 		public static void CleanUpAnyOldFiles(string jsonPath)
 		{
-			DeleteFileAtPath(jsonPath, "*.fbx");
-			DeleteFileAtPath(jsonPath, "*.fbx.meta");
+			DeleteFileAtPath(jsonPath, "*.gltf");
+			DeleteFileAtPath(jsonPath, "*.gltf.meta");
 		}
 
 		/// <summary>
-		/// Deletes a specific file in the FBX folder at the path
+		/// Deletes a specific file in the Gltf folder at the path
 		/// </summary>
 		/// <param name="jsonPath">Json path.</param>
-		/// <param name="extension">Extension must be "*.fbx" or "*.fbx.meta"</param></param>
+		/// <param name="extension">Extension must be "*.gltf" or "*.gltf.meta"</param></param>
 		public static void DeleteFileAtPath(string jsonPath, string extension)
 		{
 			jsonPath = UtiltiesOverte.GetFolderFromPath(jsonPath);
 
-			// Set up the directory for the fbx files
-			string fbxExportPath = jsonPath + @"FBXObjects/";
+			// Set up the directory for the Gltf files
+			string GltfExportPath = jsonPath + @"GltfObjects/";
 
-			// If we can't find the fbx export path, just return and do nothing
-			if(Directory.Exists(fbxExportPath) == false)
+			// If we can't find the Gltf export path, just return and do nothing
+			if(Directory.Exists(GltfExportPath) == false)
 				return;
 
-			// If we do find the path, delete all FBX files
-			string[] fileNames = Directory.GetFiles(fbxExportPath, "*.fbx");
+			// If we do find the path, delete all Gltf files
+			string[] fileNames = Directory.GetFiles(GltfExportPath, "*.gltf");
 
 			// Go through all the files and delete them
 			for(int i = 0; i < fileNames.Length; i++)
@@ -1045,7 +1057,7 @@ namespace OverteExporter
 //		/// <summary>
 //		/// Exports ANY Game Object given to it. Will provide a dialog and return the path of the newly exported file
 //		/// </summary>
-//		/// <returns>The path of the newly exported FBX file</returns>
+//		/// <returns>The path of the newly exported Gltf file</returns>
 //		/// <param name="gameObj">Game object to be exported</param>
 //		/// <param name="copyMaterials">If set to <c>true</c> copy materials.</param>
 //		/// <param name="copyTextures">If set to <c>true</c> copy textures.</param>
@@ -1053,7 +1065,7 @@ namespace OverteExporter
 //		public static string ExportGameObject(List<GameObject> gameObjects, bool copyMaterials, bool copyTextures, string oldPath = null) {
 //			foreach (var gameObj in gameObjects) {
 //				if (gameObj == null) {
-//					EditorUtility.DisplayDialog("Object is null", "Please select any GameObject to Export to FBX", "Okay");
+//					EditorUtility.DisplayDialog("Object is null", "Please select any GameObject to Export to Gltf", "Okay");
 //					return null;
 //				}
 //			}
@@ -1065,11 +1077,11 @@ namespace OverteExporter
 //			}
 //
 //			foreach (var gameObject in gameObjects) {
-//				var fileName = newPath + "/" + gameObject.name + ".fbx";
+//				var fileName = newPath + "/" + gameObject.name + ".gltf";
 //				if (fileName != null && fileName.Length != 0) {
-//					bool isSuccess = FBXExporter.ExportGameObjToFBX(gameObject, fileName, copyMaterials, copyTextures);
+//					bool isSuccess = GltfExporter.ExportGameObjToGltf(gameObject, fileName, copyMaterials, copyTextures);
 //					if (!isSuccess) {
-//						EditorUtility.DisplayDialog("Warning", "The extension probably wasn't an FBX file, could not export.", "Okay");
+//						EditorUtility.DisplayDialog("Warning", "The extension probably wasn't an Gltf file, could not export.", "Okay");
 //					}
 //				}
 //			}
@@ -1087,7 +1099,7 @@ namespace OverteExporter
 //			string newPath = null;
 //
 //			if (oldPath == null) {
-//				newPath = EditorUtility.SaveFolderPanel("Select Folder to Export FBX", "/Assets", "");
+//				newPath = EditorUtility.SaveFolderPanel("Select Folder to Export Gltf", "/Assets", "");
 //				if (!newPath.Contains("/Assets")) {
 //					EditorUtility.DisplayDialog("Warning", "Must save file in the project's assets folder", "Okay");
 //					return null;
@@ -1097,7 +1109,7 @@ namespace OverteExporter
 //					oldPath = Application.dataPath.Remove(Application.dataPath.LastIndexOf("/Assets"), 7) + oldPath;
 //					oldPath = oldPath.Remove(oldPath.LastIndexOf('/'), oldPath.Length - oldPath.LastIndexOf('/'));
 //				}
-//				newPath = EditorUtility.SaveFolderPanel("Select Folder to Export FBX", oldPath, "");
+//				newPath = EditorUtility.SaveFolderPanel("Select Folder to Export Gltf", oldPath, "");
 //			}
 //
 //			int assetsIndex = newPath.IndexOf("Assets");
@@ -1176,7 +1188,7 @@ namespace OverteExporter
 //
 //				// Setting model URL
 //				string directory = Application.dataPath.Replace("Assets", "");
-//				jsonObject.modelURL = "file:///" + directory + path + "/" + gameObjects[i].name + ".fbx";
+//				jsonObject.modelURL = "file:///" + directory + path + "/" + gameObjects[i].name + ".gltf";
 //
 //				// Writing JSON to file
 //				string jsonString = JsonUtility.ToJson(jsonObject);
@@ -1195,12 +1207,12 @@ namespace OverteExporter
 		//		{
 		//			Dictionary<Mesh, string> meshReference = new Dictionary<Mesh, string>();
 		//
-		//			// Set up the directory for the fbx files
-		//			string fbxExportPath = rootPath + @"FBXObjects/";
-		//			if(Directory.Exists(fbxExportPath) == false)
-		//				Directory.CreateDirectory(fbxExportPath);
+		//			// Set up the directory for the Gltf files
+		//			string GltfExportPath = rootPath + @"GltfObjects/";
+		//			if(Directory.Exists(GltfExportPath) == false)
+		//				Directory.CreateDirectory(GltfExportPath);
 		//
-		//			// Destroy all the FBX files in the current directory
+		//			// Destroy all the Gltf files in the current directory
 		//
 		//			// No longer copying over OBJ files, so no need for a folder for this
 		//			//			// Set up the directory for the obj objects
@@ -1289,7 +1301,7 @@ namespace OverteExporter
 		//					jsonObject.id = GUIDReference[gameObj];
 		//					bool hasParent = jsonObject.parentID != ConvertIDToString(0);
 		//
-		//					// Find if we have a fbx file that is being reference,
+		//					// Find if we have a Gltf file that is being reference,
 		//					// If we do, extract that file, copy and reference this
 		//					MeshFilter filter = gameObj.GetComponent<MeshFilter>();
 		//					string assetPath = AssetDatabase.GetAssetPath(filter.sharedMesh);
@@ -1301,8 +1313,8 @@ namespace OverteExporter
 		//					string extension = GetFileExtension(assetPath).ToLower();
 		//					ExportType exportType = ExportType.Procedural;
 		//
-		//					if(extension == "fbx")
-		//						exportType = ExportType.Fbx;
+		//					if(extension == "Gltf")
+		//						exportType = ExportType.Gltf;
 		//					else if(extension == "obj")
 		//						exportType = ExportType.Obj;
 		//					else if(extension == "blend")
@@ -1315,15 +1327,15 @@ namespace OverteExporter
 		//
 		//					string relativeAssetFileName = "";
 		//
-		//					// Now either copy or create a new FBX file for export
+		//					// Now either copy or create a new Gltf file for export
 		//					// TODO - If two files have the same name and extension, they will export incorrectly
 		//					switch(exportType)
 		//					{
-		//					case ExportType.Fbx:
-		//						System.IO.File.Copy(fullAssetPath, fbxExportPath + assetFileName, true);
-		//						relativeAssetFileName = "FBXObjects/" + assetFileName;
+		//					case ExportType.Gltf:
+		//						System.IO.File.Copy(fullAssetPath, GltfExportPath + assetFileName, true);
+		//						relativeAssetFileName = "GltfObjects/" + assetFileName;
 		//						break;
-		//					case ExportType.Obj: // No longer copying or exporting OBJ or FBX files so no longer needed
+		//					case ExportType.Obj: // No longer copying or exporting OBJ or Gltf files so no longer needed
 		//						//						System.IO.File.Copy(fullAssetPath, objExportPath + assetFileName, true);
 		//						//						// TODO - maybe copy the material file here too
 		//						//						relativeAssetFileName = "ObjObjects/" + assetFileName;
@@ -1340,10 +1352,10 @@ namespace OverteExporter
 		//						}
 		//						else
 		//						{
-		//							// Remove whatever ending this file has (like .blend) and add fbx for export
+		//							// Remove whatever ending this file has (like .blend) and add Gltf for export
 		//							// TODO - add catch in case there is no extension on a file
 		//							assetFileName = RemoveFileExtension(assetFileName);
-		//							assetFileName += ".fbx";
+		//							assetFileName += ".gltf";
 		//						}
 		//
 		//						Mesh meshie = gameObj.GetComponent<MeshFilter>().sharedMesh;
@@ -1352,16 +1364,16 @@ namespace OverteExporter
 		//						{
 		//							// Checks to see if the file name already exists (in the case of duplicates)
 		//							// and tacks on a unique number
-		//							assetFileName = MakeUniqueAssetFileName(assetFileName, fbxExportPath);
+		//							assetFileName = MakeUniqueAssetFileName(assetFileName, GltfExportPath);
 		//
-		//							bool success = HighFidelityFBXExporter.ExportGameObjToFBX(gameObj, fbxExportPath + assetFileName, true, true);
+		//							bool success = HighFidelityGltfExporter.ExportGameObjToGltf(gameObj, GltfExportPath + assetFileName, true, true);
 		//							if(success == false)
 		//								Debug.Log("Failed to export item " + assetFileName);
 		//
 		//							meshReference.Add(meshie, assetFileName);
 		//						}
 		//
-		//						relativeAssetFileName = "FBXObjects/" + meshReference[meshie];
+		//						relativeAssetFileName = "GltfObjects/" + meshReference[meshie];
 		//
 		//						break;
 		//					}
@@ -1398,7 +1410,7 @@ namespace OverteExporter
 		//
 		//						// TODO - rotate through all parents to make sure everything is rotated well as we go up a hierarchy
 		//
-		//						// Offsets the position compared to the center of the mesh versus the FBX rotational point
+		//						// Offsets the position compared to the center of the mesh versus the Gltf rotational point
 		//						if(gameObj.transform.parent == null || hasParent == false)
 		//						{
 		//							jsonObject.position = gameObjectsToExport[i].transform.position;
