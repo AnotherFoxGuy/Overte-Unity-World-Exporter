@@ -518,14 +518,14 @@ namespace HiFiExporter
 					jsonObject.registrationPoint.z = .5f;
 
 					// Find the rotation in local exporting space
-					Vector3 dimensions = objectMesh.bounds.size;
+                    Vector3 dimensions = objectMesh.bounds.size;
 
-					jsonObject.dimensions.x = dimensions.x * gameObj.transform.lossyScale.x;
-					jsonObject.dimensions.y = dimensions.y * gameObj.transform.lossyScale.y;
-					jsonObject.dimensions.z = dimensions.z * gameObj.transform.lossyScale.z;
+                    jsonObject.dimensions.x = dimensions.x * gameObj.transform.lossyScale.x;
+                    jsonObject.dimensions.y = dimensions.y * gameObj.transform.lossyScale.y;
+                    jsonObject.dimensions.z = dimensions.z * gameObj.transform.lossyScale.z;
 
-					// Offsets the position compared to the center of the mesh versus the FBX rotational point
-					if(gameObj.transform.parent == null || hasParent == false)
+                    // Offsets the position compared to the center of the mesh versus the FBX rotational point
+                    if (gameObj.transform.parent == null || hasParent == false)
 					{
 						// If there is no parent, then we just offset by the world position
 						// If a subobject of a tree is selected, the parent is the highest in the tree
@@ -763,14 +763,14 @@ namespace HiFiExporter
 					Debug.Log("hit breaker");
 			}
 
-			for(int i = 0; i < listOfParents.Count; i++)
-			{
-				if(listOfParents[i].localScale != Vector3.one)
-				{
-					Debug.LogError("GameObject " + gameObj.name + " has parent(s) with a different scale than 1, 1, 1. This will not translate to High Fidelity. " +
-						"Please fix and export again. Export will have completed, but some objects in High Fidelity will not transfer well.");
-				}
-			}
+			foreach (var t in listOfParents)
+            {
+                if(t.localScale != Vector3.one)
+                {
+                    Debug.LogError("GameObject " + gameObj.name + " has parent(s) with a different scale than 1, 1, 1. This will not translate to High Fidelity. " +
+                                   "Please fix and export again. Export will have completed, but some objects in High Fidelity will not transfer well.");
+                }
+            }
 		}
 
 		#endregion

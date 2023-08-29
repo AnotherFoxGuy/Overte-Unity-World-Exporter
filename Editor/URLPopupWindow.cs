@@ -57,7 +57,7 @@ namespace HiFiExporter
 		public static void Init()
 		{
 			URLPopupWindow window = ScriptableObject.CreateInstance<URLPopupWindow>();
-			window.position = new Rect(200, 200, 250, 186);
+			window.position = new Rect(200, 200, 512, 512);
 			window.Focus();
 			setFocus = true;
 			window.ShowPopup();
