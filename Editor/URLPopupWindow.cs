@@ -41,81 +41,83 @@ using OverteExporter;
 
 namespace OverteExporter
 {
-	/// <summary>
-	/// Creates a popup that is used just before exporting the fbx files, allows the player to set up a URL where the remote files will be
-	/// NOTE: This will eventually be phased out once the relative links are working well
-	/// </summary>
-	public class URLPopupWindow : EditorWindow {
+    /// <summary>
+    /// Creates a popup that is used just before exporting the fbx files, allows the player to set up a URL where the remote files will be
+    /// NOTE: This will eventually be phased out once the relative links are working well
+    /// </summary>
+    public class URLPopupWindow : EditorWindow
+    {
+        public static bool LocalOnly = false;
+        public static string URLFolder = "URL://";
+        private static bool setFocus = false;
 
-		public static bool LocalOnly = false;
-		public static string URLFolder = "URL://";
-		private static bool setFocus = false;
+        /// <summary>
+        /// Initializes the window and readies it for use
+        /// </summary>
+        public static void Init()
+        {
+            URLPopupWindow window = ScriptableObject.CreateInstance<URLPopupWindow>();
+            window.position = new Rect(200, 200, 512, 512);
+            window.Focus();
+            setFocus = true;
+            window.ShowPopup();
+        }
 
-		/// <summary>
-		/// Initializes the window and readies it for use
-		/// </summary>
-		public static void Init()
-		{
-			URLPopupWindow window = ScriptableObject.CreateInstance<URLPopupWindow>();
-			window.position = new Rect(200, 200, 512, 512);
-			window.Focus();
-			setFocus = true;
-			window.ShowPopup();
-		}
+        void OnGUI()
+        {
+            EditorGUILayout.LabelField("Please choose the root URL these objects will be sent to",
+                EditorStyles.wordWrappedLabel);
 
-		void OnGUI()
-		{
-			EditorGUILayout.LabelField("Please choose the root URL these objects will be sent to",
-				EditorStyles.wordWrappedLabel);
+            GUIStyle subtextStyle = EditorStyles.wordWrappedMiniLabel;
 
-			GUIStyle subtextStyle = EditorStyles.wordWrappedMiniLabel;
+            EditorGUILayout.LabelField(
+                "If you are using objects on remote servers, you must upload them to a spot on the internet. " +
+                "Please enter the relative path here. This is the path that you just saved the json file to. This should be" +
+                "a place on Amazon servers or somewhere that the model fbx will live forever.",
+                subtextStyle);
 
-			EditorGUILayout.LabelField("If you are using objects on remote servers, you must upload them to a spot on the internet. " +
-				"Please enter the relative path here. This is the path that you just saved the json file to. This should be" +
-				"a place on Amazon servers or somewhere that the model fbx will live forever.", 
-				subtextStyle);
+            GUILayout.Space(10);
 
-			GUILayout.Space(10);
+            GUI.SetNextControlName("URLField");
+            URLFolder = EditorGUILayout.TextArea(URLFolder);
 
-			GUI.SetNextControlName("URLField");
-			URLFolder = EditorGUILayout.TextArea(URLFolder);
+            if (setFocus == true)
+            {
+                EditorGUI.FocusTextInControl("URLField");
+                setFocus = false;
+            }
 
-			if(setFocus == true)
-			{
-				EditorGUI.FocusTextInControl("URLField");
-				setFocus = false;
-			}
+            GUILayout.Space(10);
 
-			GUILayout.Space(10);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Don't Use"))
+            {
+                LocalOnly = true;
 
-			EditorGUILayout.BeginHorizontal();
-			if(GUILayout.Button("Don't Use"))
-			{
-				LocalOnly = true;
+                ExporterMenuOverte.ExportCurrentGameObjects();
+                this.Close();
+            }
 
-				ExporterMenuOverte.ExportCurrentGameObjects();
-				this.Close();
-			}	
+            if (GUILayout.Button("Okay"))
+            {
+                LocalOnly = false;
 
-			if (GUILayout.Button("Okay")) 
-			{
-				LocalOnly = false;
+                if (URLFolder == "URL://")
+                    LocalOnly = true;
 
-				if(URLFolder == "URL://")
-					LocalOnly = true;
+                if (URLFolder[URLFolder.Length - 1] != '/')
+                    URLFolder += "/";
 
-				if(URLFolder[URLFolder.Length - 1] != '/')
-					URLFolder += "/";
+                ExporterMenuOverte.ExportCurrentGameObjects();
+                this.Close();
+            }
 
-				ExporterMenuOverte.ExportCurrentGameObjects();
-				this.Close();
-			}
-			EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndHorizontal();
 
-			if(GUILayout.Button("Cancel"))
-			{
-				this.Close();
-			}
-		}
-	}
+            if (GUILayout.Button("Cancel"))
+            {
+                this.Close();
+            }
+        }
+    }
 }

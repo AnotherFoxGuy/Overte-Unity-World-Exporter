@@ -39,79 +39,79 @@ using UnityEngine;
 
 namespace OverteExporter
 {
-	/// <summary>
-	/// File system that can be imported by Overte
-	/// </summary>
-	[System.Serializable]
-	public class OverteJsonObject
-	{
-		// Model stuff
-		public string type;
-		public string modelURL;
-		public Vector3 position;
-		public Vector3 registrationPoint;
-		public Vector3 dimensions;
-		public Quaternion rotation;
-		public string id;
-		public string parentID;
-		public string shapeType;
-		public bool collisionless = false;
-		// NOTE: If you add anything to the mode, please add it to the OverteModelObject below as well as in its constructor
+    /// <summary>
+    /// File system that can be imported by Overte
+    /// </summary>
+    [System.Serializable]
+    public class OverteJsonObject
+    {
+        // Model stuff
+        public string type;
+        public string modelURL;
+        public Vector3 position;
+        public Vector3 registrationPoint;
+        public Vector3 dimensions;
+        public Quaternion rotation;
+        public string id;
+        public string parentID;
+        public string shapeType;
+        public bool collisionless = false;
+        // NOTE: If you add anything to the mode, please add it to the OverteModelObject below as well as in its constructor
 
-		// Light stuff
-		public bool isSpotlight;
-		public float intensity = 1.0f;
-		public float exponent;
-		public float cutoff;
-		public color color;
-		public float falloffRadius;
-	}
+        // Light stuff
+        public bool isSpotlight;
+        public float intensity = 1.0f;
+        public float exponent;
+        public float cutoff;
+        public color color;
+        public float falloffRadius;
+    }
 
-	/// <summary>
-	/// Used to simplify the OverteJsonObject so that it doesn't have extra light information
-	/// </summary>
-	public class OverteModelObject
-	{
-		public OverteModelObject(OverteJsonObject obj)
-		{
-			type = obj.type;
-			modelURL = obj.modelURL;
-			position = obj.position;
-			registrationPoint = obj.registrationPoint;
-			dimensions = obj.dimensions;
-			rotation = obj.rotation;
-			id = obj.id;
-			parentID = obj.parentID;
-			shapeType = obj.shapeType;
-			collisionless = obj.collisionless;
-		}
+    /// <summary>
+    /// Used to simplify the OverteJsonObject so that it doesn't have extra light information
+    /// </summary>
+    public class OverteModelObject
+    {
+        public OverteModelObject(OverteJsonObject obj)
+        {
+            type = obj.type;
+            modelURL = obj.modelURL;
+            position = obj.position;
+            registrationPoint = obj.registrationPoint;
+            dimensions = obj.dimensions;
+            rotation = obj.rotation;
+            id = obj.id;
+            parentID = obj.parentID;
+            shapeType = obj.shapeType;
+            collisionless = obj.collisionless;
+        }
 
-		public string type;
-		public string modelURL;
-		public Vector3 position;
-		public Vector3 registrationPoint;
-		public Vector3 dimensions;
-		public Quaternion rotation;
-		public string id;
-		public string parentID;
-		public string shapeType;
-		public bool collisionless = false;
-	}
+        public string type;
+        public string modelURL;
+        public Vector3 position;
+        public Vector3 registrationPoint;
+        public Vector3 dimensions;
+        public Quaternion rotation;
+        public string id;
+        public string parentID;
+        public string shapeType;
+        public bool collisionless = false;
+    }
 
-	/// <summary>
-	/// Color class used in hifi (hifi format)
-	/// </summary>
-	[System.Serializable]
-	public class color
-	{
-		public int red;
-		public int green;
-		public int blue;
-	}
+    /// <summary>
+    /// Color class used in hifi (hifi format)
+    /// </summary>
+    [System.Serializable]
+    public class color
+    {
+        public int red;
+        public int green;
+        public int blue;
+    }
 
-	public class MeshInfo
-	{
-		public string AssetFileName;
-//		public List<Material> Materials;
-	}
+    public class MeshInfo
+    {
+        public string AssetFileName;
+        //		public List<Material> Materials;
+    }
 }
