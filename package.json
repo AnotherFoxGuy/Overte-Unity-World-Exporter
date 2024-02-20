@@ -1,10 +1,13 @@
 {
-  "name": "org.overte.object-exporter",
-  "version": "0.0.1",
-  "displayName": "Overte Object Exporter for Unity",
-  "description": "Overte Object Exporter for Unity",
-  "unity": "2019.4",
-  "license": "MIT",
-  "author": "Edgar (Edgar@AnotherFoxGuy.com)",
-  "documentationUrl": "https://docs.overte.org/create/avatars/find-avatars.html#overte-avatar-exporter-for-unity"
+    "name": "org.overte.object-exporter",
+    "version": "0.0.1",
+    "displayName": "Overte Object Exporter for Unity",
+    "description": "Overte Object Exporter for Unity",
+    "unity": "2019.4",
+    "license": "MIT",
+    "author": "Edgar (Edgar@AnotherFoxGuy.com)",
+    "documentationUrl": "https://docs.overte.org/create/avatars/find-avatars.html#overte-avatar-exporter-for-unity",
+    "dependencies":{
+        "com.unity.cloud.gltfast": ">=6.2.0"
+    }
 }
